@@ -142,6 +142,24 @@ def project_point_to_camera(
         u = f * distortion * x_norm + cx
         v = f * distortion * y_norm + cy
 
+    elif model == 'OPENCV':
+        # params: fx, fy, cx, cy, k1, k2, p1, p2
+        # OpenCV distortion model with radial (k1, k2) and tangential (p1, p2) distortion
+        fx, fy, cx, cy, k1, k2, p1, p2 = params
+
+        r2 = x_norm**2 + y_norm**2
+        r4 = r2 * r2
+
+        # Radial distortion
+        radial = 1 + k1 * r2 + k2 * r4
+
+        # Tangential distortion
+        x_distorted = x_norm * radial + 2*p1*x_norm*y_norm + p2*(r2 + 2*x_norm**2)
+        y_distorted = y_norm * radial + p1*(r2 + 2*y_norm**2) + 2*p2*x_norm*y_norm
+
+        u = fx * x_distorted + cx
+        v = fy * y_distorted + cy
+
     else:
         logger.warning(f"Unsupported camera model: {model}, using simple projection")
         # Fallback to simple pinhole
