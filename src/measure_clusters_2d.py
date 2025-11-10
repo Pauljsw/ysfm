@@ -335,11 +335,27 @@ def run_measurement(
 
             # Get pixel scale
             image_stem = Path(image_name).stem
-            if image_stem not in pixel_scales:
+
+            # Try multiple matching strategies
+            pixel_scale_key = None
+
+            # 1. Exact match
+            if image_stem in pixel_scales:
+                pixel_scale_key = image_stem
+            # 2. Remove "camera_RGB_" prefix if exists
+            elif image_stem.startswith('camera_RGB_'):
+                stripped = image_stem.replace('camera_RGB_', '', 1)
+                if stripped in pixel_scales:
+                    pixel_scale_key = stripped
+            # 3. Try adding "camera_RGB_" prefix
+            elif f'camera_RGB_{image_stem}' in pixel_scales:
+                pixel_scale_key = f'camera_RGB_{image_stem}'
+
+            if pixel_scale_key is None:
                 logger.warning(f"  No pixel scale for {image_stem}, skipping")
                 continue
 
-            pixel_scale = pixel_scales[image_stem].get('mean_scale_mm', 1.0)
+            pixel_scale = pixel_scales[pixel_scale_key].get('mean_scale_mm', 1.0)
 
             # Measure
             measurement = measure_cluster_in_image(
