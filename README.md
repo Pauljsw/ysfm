@@ -27,6 +27,17 @@ This project implements a **complete end-to-end pipeline** for 3D defect detecti
 - **Multiple Export Formats**: PLY point clouds, CSV tables, GeoJSON, Markdown reports
 - **Reinference Support**: Optional tile-based YOLO reinference for quality improvement
 
+## 📚 Documentation
+
+- **[DENSE_PIPELINE.md](DENSE_PIPELINE.md)** - ⭐ **NEW!** Complete guide for dense point cloud pipeline with 3D clustering
+  - Deduplication: Remove duplicate crack detections across images
+  - Fragmentation handling: Merge crack fragments into unified instances
+  - 3D measurements: Accurate length, width, volume per unique crack
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick start guide
+- **[SIMPLE_PIPELINE.md](SIMPLE_PIPELINE.md)** - Simple pipeline usage
+- **[PIPELINE_GUIDE.md](PIPELINE_GUIDE.md)** - Comprehensive pipeline documentation
+- **[DATA_REQUIREMENTS.md](DATA_REQUIREMENTS.md)** - Data format specifications
+
 ## Project Structure
 
 ```
