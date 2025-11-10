@@ -187,12 +187,30 @@ def overlay_masks_on_dense_pointcloud(
 
     # Load dense point cloud
     logger.info(f"Loading dense point cloud: {dense_ply}")
+
+    # Check if file exists
+    if not Path(dense_ply).exists():
+        raise FileNotFoundError(f"Dense PLY file not found: {dense_ply}")
+
     pcd = o3d.io.read_point_cloud(dense_ply)
     points = np.asarray(pcd.points)
     colors = np.asarray(pcd.colors)
 
+    # Check if point cloud is empty
+    if len(points) == 0:
+        raise ValueError(
+            f"Point cloud is empty! File: {dense_ply}\n"
+            f"Possible causes:\n"
+            f"  1. Wrong file path (check fused.ply vs fused_photometric.ply)\n"
+            f"  2. Dense reconstruction failed\n"
+            f"  3. Corrupted PLY file"
+        )
+
     # Convert colors from [0, 1] to [0, 255]
-    if colors.max() <= 1.0:
+    if len(colors) == 0:
+        logger.warning("No color information, using white for all points")
+        colors = np.ones((len(points), 3), dtype=np.uint8) * 255
+    elif colors.max() <= 1.0:
         colors = (colors * 255).astype(np.uint8)
     else:
         colors = colors.astype(np.uint8)
