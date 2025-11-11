@@ -56,13 +56,22 @@ sfm:
   camera_model: 'OPENCV'  # Or PINHOLE, RADIAL, etc.
   quality: 'high'         # low, medium, high, extreme
   dense: true             # ← IMPORTANT: Enable dense reconstruction
+  dense_params:           # Parameters for dense reconstruction
+    geom_consistency: false  # false = more points (recommended)
+    input_type: photometric  # photometric or geometric
+    max_image_size: 2160     # Maximum image size
+    min_num_pixels: 3        # Minimum pixels for stereo fusion
+    max_reproj_error: 3.0    # Maximum reprojection error
+    max_depth_error: 0.01    # Maximum depth error
+    max_normal_error: 25.0   # Maximum normal error (degrees)
 ```
 
 **Outputs:**
 - `data/sfm/sparse/0/` - Initial sparse reconstruction
   - `cameras.bin, images.bin, points3D.bin`
 - `data/sfm/dense/` - Dense reconstruction
-  - `fused.ply` - Dense point cloud ⭐
+  - `fused_photometric.ply` - Dense point cloud (when using photometric mode) ⭐
+  - `fused.ply` - Dense point cloud (when using geometric mode)
   - `sparse/` - Undistorted sparse reconstruction
     - `cameras.bin, images.bin` ← Used for clustering & measurement
   - `images/` - Undistorted images
@@ -148,12 +157,14 @@ Project YOLO masks onto dense point cloud in 3D.
 
 ```bash
 python -m src.point_cloud_overlay_dense \
-  --dense-ply data/sfm/dense/fused.ply \
+  --dense-ply data/sfm/dense/fused_photometric.ply \
   --sparse-dir data/sfm/dense/sparse \
   --masks-dir data/yolo_masks \
   --output outputs/dense_masked_cloud.ply \
   --min-votes 1
 ```
+
+**Note**: Use `fused_photometric.ply` when using photometric mode (default), or `fused.ply` when using geometric mode.
 
 **Parameters:**
 - `--dense-ply`: Dense point cloud (fused.ply)
@@ -317,7 +328,7 @@ python -m src.pixel_calibration \
 
 # Phase 3: Dense point cloud overlay
 python -m src.point_cloud_overlay_dense \
-  --dense-ply data/sfm/dense/fused.ply \
+  --dense-ply data/sfm/dense/fused_photometric.ply \
   --sparse-dir data/sfm/dense/sparse \
   --masks-dir data/yolo_masks \
   --output outputs/dense_masked_cloud.ply \
@@ -382,7 +393,8 @@ python -m src.measure_clusters_2d \
 | File | Phase | Description |
 |------|-------|-------------|
 | `data/sfm/sparse/0/` | 0 | Initial camera poses |
-| `data/sfm/dense/fused.ply` | 0 | Dense point cloud |
+| `data/sfm/dense/fused_photometric.ply` | 0 | Dense point cloud (photometric mode) |
+| `data/sfm/dense/fused.ply` | 0 | Dense point cloud (geometric mode) |
 | `data/sfm/dense/sparse/` | 0 | Undistorted poses |
 | `data/yolo_masks/*.json` | 1 | 2D crack masks |
 | `calibration/pixel_scales.json` | 2 | **Pixel-to-mm scales** ⭐ |
@@ -444,6 +456,13 @@ python -m src.measure_clusters_2d \
 - Check pixel calibration (Phase 2)
 - Verify depth maps are correct (mm or m units)
 - Inspect `--img-shape` parameter (default: 2160×3840)
+
+### "Dense point cloud not generated"
+- Check that `dense: true` in config
+- Verify `dense_params` are set (use `input_type: photometric` for better results)
+- Look for `fused_photometric.ply` or `fused.ply` in `data/sfm/dense/`
+- Try running with `geom_consistency: false` (generates more points)
+- Check COLMAP logs for errors during patch_match_stereo or stereo_fusion
 
 ---
 

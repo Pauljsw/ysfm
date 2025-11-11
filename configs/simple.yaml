@@ -25,8 +25,15 @@ sfm:
   camera_model: OPENCV      # PINHOLE, OPENCV, RADIAL, SIMPLE_RADIAL
   quality: high             # low, medium, high, extreme
   use_gpu: true
-  dense: false              # Set to true if you have CUDA (see DENSE_SFM_SETUP.md)
-                            # Sparse is sufficient for crack measurement
+  dense: true               # Set to true to generate dense point cloud
+  dense_params:             # Parameters for dense reconstruction
+    geom_consistency: false # Geometric consistency check (false = more points)
+    input_type: photometric # photometric or geometric
+    max_image_size: 2160    # Maximum image size for dense reconstruction
+    min_num_pixels: 3       # Minimum pixels for stereo fusion
+    max_reproj_error: 3.0   # Maximum reprojection error
+    max_depth_error: 0.01   # Maximum depth error
+    max_normal_error: 25.0  # Maximum normal error (degrees)
 
 # Pixel-to-MM Calibration
 pixel_calibration:

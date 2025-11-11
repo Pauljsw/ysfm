@@ -174,11 +174,14 @@ class Pipeline:
             camera_model = sfm_config.get('camera_model', 'OPENCV')
             quality = sfm_config.get('quality', 'high')
             dense = sfm_config.get('dense', False)
+            dense_params = sfm_config.get('dense_params', None)
 
             poses_output = f"{sfm_dir}/poses.json"
 
             logger.info(f"Running COLMAP on images in: {rgb_dir}")
             logger.info(f"Camera model: {camera_model}, Quality: {quality}")
+            if dense:
+                logger.info(f"Dense reconstruction enabled with params: {dense_params}")
 
             # Run COLMAP
             poses = run_colmap_sfm_auto(
@@ -187,7 +190,8 @@ class Pipeline:
                 poses_json_output=poses_output,
                 camera_model=camera_model,
                 quality=quality,
-                dense=dense
+                dense=dense,
+                dense_params=dense_params
             )
 
             logger.info(f"SFM complete: {len(poses)} images reconstructed")

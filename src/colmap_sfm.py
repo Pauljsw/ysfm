@@ -537,28 +537,46 @@ class COLMAPRunner:
         sparse_model_dir: str,
         image_dir: str,
         output_dir: str,
-        max_image_size: int = 2000
+        max_image_size: int = 2000,
+        dense_params: Optional[Dict] = None
     ) -> str:
         """
         Run dense reconstruction (optional, for reference point cloud).
-        
+
         Args:
             sparse_model_dir: Sparse model directory
             image_dir: Image directory
             output_dir: Output directory for dense reconstruction
             max_image_size: Maximum image size for dense reconstruction
-            
+            dense_params: Dense reconstruction parameters (geom_consistency, input_type, etc.)
+
         Returns:
             Path to dense point cloud
         """
         logger.info("Running dense reconstruction (this may take a while)...")
-        
+
+        # Parse dense parameters with defaults
+        if dense_params is None:
+            dense_params = {}
+
+        geom_consistency = dense_params.get('geom_consistency', False)
+        input_type = dense_params.get('input_type', 'photometric')
+        max_img_size = dense_params.get('max_image_size', max_image_size)
+
+        # Stereo fusion parameters (optional)
+        min_num_pixels = dense_params.get('min_num_pixels', 3)
+        max_reproj_error = dense_params.get('max_reproj_error', 3.0)
+        max_depth_error = dense_params.get('max_depth_error', 0.01)
+        max_normal_error = dense_params.get('max_normal_error', 25.0)
+
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
-        
+
         dense_dir = output_path / 'dense'
         dense_dir.mkdir(exist_ok=True)
-        
+
+        logger.info(f"Dense params: input_type={input_type}, geom_consistency={geom_consistency}")
+
         # Step 1: Undistort images
         logger.info("Step 1/3: Image undistortion")
         cmd = [
@@ -567,34 +585,42 @@ class COLMAPRunner:
             '--input_path', sparse_model_dir,
             '--output_path', str(dense_dir),
             '--output_type', 'COLMAP',
-            '--max_image_size', str(max_image_size)
+            '--max_image_size', str(max_img_size)
         ]
         self._run_command(cmd, "Image undistortion failed")
-        
+
         # Step 2: Patch match stereo
         logger.info("Step 2/3: Patch match stereo")
         cmd = [
             self.colmap_exe, 'patch_match_stereo',
             '--workspace_path', str(dense_dir),
             '--workspace_format', 'COLMAP',
-            '--PatchMatchStereo.geom_consistency', 'true'
+            '--PatchMatchStereo.geom_consistency', str(geom_consistency).lower()
         ]
         self._run_command(cmd, "Patch match stereo failed")
-        
+
         # Step 3: Stereo fusion
         logger.info("Step 3/3: Stereo fusion")
+
+        # Output filename based on input_type
+        output_filename = f'fused_{input_type}.ply' if input_type != 'geometric' else 'fused.ply'
+
         cmd = [
             self.colmap_exe, 'stereo_fusion',
             '--workspace_path', str(dense_dir),
             '--workspace_format', 'COLMAP',
-            '--input_type', 'geometric',
-            '--output_path', str(dense_dir / 'fused.ply')
+            '--input_type', input_type,
+            '--output_path', str(dense_dir / output_filename),
+            '--StereoFusion.min_num_pixels', str(min_num_pixels),
+            '--StereoFusion.max_reproj_error', str(max_reproj_error),
+            '--StereoFusion.max_depth_error', str(max_depth_error),
+            '--StereoFusion.max_normal_error', str(max_normal_error)
         ]
         self._run_command(cmd, "Stereo fusion failed")
-        
-        output_ply = dense_dir / 'fused.ply'
+
+        output_ply = dense_dir / output_filename
         logger.info(f"Dense point cloud saved: {output_ply}")
-        
+
         return str(output_ply)
 
 
@@ -604,11 +630,12 @@ def run_colmap_sfm_auto(
     poses_json_output: str,
     camera_model: str = 'OPENCV',
     quality: str = 'high',
-    dense: bool = False
+    dense: bool = False,
+    dense_params: Optional[Dict] = None
 ) -> Dict:
     """
     Automatic COLMAP SFM pipeline.
-    
+
     Args:
         image_dir: Directory with RGB images
         output_dir: Output directory for COLMAP
@@ -616,12 +643,13 @@ def run_colmap_sfm_auto(
         camera_model: COLMAP camera model
         quality: Quality setting ('low', 'medium', 'high', 'extreme')
         dense: Whether to run dense reconstruction
-        
+        dense_params: Dense reconstruction parameters (geom_consistency, input_type, etc.)
+
     Returns:
         Dictionary of poses
     """
     runner = COLMAPRunner()
-    
+
     # Run sparse reconstruction
     sparse_model_dir = runner.run_sfm_pipeline(
         image_dir=image_dir,
@@ -629,21 +657,22 @@ def run_colmap_sfm_auto(
         camera_model=camera_model,
         quality=quality
     )
-    
+
     # Convert to poses.json
     poses = runner.convert_to_poses_json(
         sparse_model_dir=sparse_model_dir,
         output_json=poses_json_output
     )
-    
+
     # Optional: Dense reconstruction
     if dense:
         runner.extract_dense_point_cloud(
             sparse_model_dir=sparse_model_dir,
             image_dir=image_dir,
-            output_dir=output_dir
+            output_dir=output_dir,
+            dense_params=dense_params
         )
-    
+
     return poses
 
 
