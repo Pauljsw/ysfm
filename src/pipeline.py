@@ -177,6 +177,9 @@ class Pipeline:
             dense_params = sfm_config.get('dense_params', None)
             colmap_exe = sfm_config.get('colmap_exe', 'colmap')
 
+            # Support both use_cuda (new) and use_gpu (legacy)
+            use_cuda = sfm_config.get('use_cuda', sfm_config.get('use_gpu', 'auto'))
+
             poses_output = f"{sfm_dir}/poses.json"
 
             logger.info(f"Running COLMAP on images in: {rgb_dir}")
@@ -194,7 +197,8 @@ class Pipeline:
                 quality=quality,
                 dense=dense,
                 dense_params=dense_params,
-                colmap_exe=colmap_exe
+                colmap_exe=colmap_exe,
+                use_cuda=use_cuda
             )
 
             logger.info(f"SFM complete: {len(poses)} images reconstructed")

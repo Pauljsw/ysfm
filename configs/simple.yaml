@@ -27,7 +27,8 @@ sfm:
                             # Example: /usr/local/bin/colmap
   camera_model: OPENCV      # PINHOLE, OPENCV, RADIAL, SIMPLE_RADIAL
   quality: high             # low, medium, high, extreme
-  use_gpu: true             # Use GPU acceleration (auto-fallback to CPU if unavailable)
+  use_cuda: auto            # CUDA acceleration: 'auto' (detect), 'true', 'false'
+                            # 'auto' automatically detects NVIDIA GPU availability
   dense: true               # Set to true to generate dense point cloud
   dense_params:             # Parameters for dense reconstruction
     geom_consistency: false # Geometric consistency check (false = more points)

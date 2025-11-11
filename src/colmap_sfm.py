@@ -15,17 +15,18 @@ logger = logging.getLogger(__name__)
 
 class COLMAPRunner:
     """Wrapper for COLMAP SFM pipeline"""
-    
+
     def __init__(self, colmap_executable: str = 'colmap'):
         """
         Initialize COLMAP runner.
-        
+
         Args:
             colmap_executable: Path to COLMAP executable
         """
         self.colmap_exe = colmap_executable
         self._check_colmap_installed()
-    
+        self._cuda_available = self._detect_cuda_available()
+
     def _check_colmap_installed(self):
         """Check if COLMAP is installed"""
         try:
@@ -45,28 +46,65 @@ class COLMAPRunner:
             raise RuntimeError("COLMAP not installed")
         except Exception as e:
             logger.warning(f"Could not verify COLMAP installation: {e}")
+
+    def _detect_cuda_available(self) -> bool:
+        """Detect if CUDA is available on the system"""
+        try:
+            # Check if nvidia-smi command works (indicates NVIDIA GPU present)
+            result = subprocess.run(
+                ['nvidia-smi'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                logger.info("CUDA detected: NVIDIA GPU available")
+                return True
+            else:
+                logger.info("CUDA not available: nvidia-smi failed")
+                return False
+        except FileNotFoundError:
+            logger.info("CUDA not available: nvidia-smi not found")
+            return False
+        except Exception as e:
+            logger.debug(f"CUDA detection failed: {e}")
+            return False
     
     def run_sfm_pipeline(
         self,
         image_dir: str,
         output_dir: str,
         camera_model: str = 'OPENCV',
-        use_gpu: bool = True,
+        use_cuda: str = 'auto',
         quality: str = 'high'
     ) -> str:
         """
         Run complete COLMAP SFM pipeline.
-        
+
         Args:
             image_dir: Directory containing RGB images
             output_dir: Output directory for COLMAP results
             camera_model: Camera model (OPENCV, PINHOLE, RADIAL, etc.)
-            use_gpu: Whether to use GPU acceleration
+            use_cuda: 'auto' (detect), 'true', 'false', or boolean
             quality: 'low', 'medium', 'high', 'extreme'
-            
+
         Returns:
             Path to sparse reconstruction directory
         """
+        # Handle use_cuda parameter (auto, true, false, or bool)
+        if isinstance(use_cuda, str):
+            if use_cuda.lower() == 'auto':
+                use_cuda_bool = self._cuda_available
+                logger.info(f"CUDA mode: auto (detected={'available' if use_cuda_bool else 'unavailable'})")
+            elif use_cuda.lower() in ('true', '1', 'yes'):
+                use_cuda_bool = True
+                logger.info("CUDA mode: enabled (forced)")
+            else:
+                use_cuda_bool = False
+                logger.info("CUDA mode: disabled (forced)")
+        else:
+            use_cuda_bool = bool(use_cuda)
+            logger.info(f"CUDA mode: {'enabled' if use_cuda_bool else 'disabled'}")
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         
@@ -77,16 +115,16 @@ class COLMAPRunner:
         logger.info("=" * 80)
         logger.info("Starting COLMAP SFM Pipeline")
         logger.info("=" * 80)
-        
+
         # Step 1: Feature Extraction
         logger.info("Step 1/4: Feature Extraction")
         self._run_feature_extraction(
-            database_path, image_dir, camera_model, use_gpu, quality
+            database_path, image_dir, camera_model, use_cuda_bool, quality
         )
-        
+
         # Step 2: Feature Matching
         logger.info("Step 2/4: Feature Matching")
-        self._run_feature_matching(database_path, use_gpu, quality)
+        self._run_feature_matching(database_path, use_cuda_bool, quality)
         
         # Step 3: Sparse Reconstruction
         logger.info("Step 3/4: Sparse Reconstruction")
@@ -663,7 +701,8 @@ def run_colmap_sfm_auto(
     quality: str = 'high',
     dense: bool = False,
     dense_params: Optional[Dict] = None,
-    colmap_exe: str = 'colmap'
+    colmap_exe: str = 'colmap',
+    use_cuda: str = 'auto'
 ) -> Dict:
     """
     Automatic COLMAP SFM pipeline.
@@ -677,6 +716,7 @@ def run_colmap_sfm_auto(
         dense: Whether to run dense reconstruction
         dense_params: Dense reconstruction parameters (geom_consistency, input_type, etc.)
         colmap_exe: Path to COLMAP executable (default: 'colmap')
+        use_cuda: 'auto' (detect), 'true', 'false', or boolean (default: 'auto')
 
     Returns:
         Dictionary of poses
@@ -688,6 +728,7 @@ def run_colmap_sfm_auto(
         image_dir=image_dir,
         output_dir=output_dir,
         camera_model=camera_model,
+        use_cuda=use_cuda,
         quality=quality
     )
 
