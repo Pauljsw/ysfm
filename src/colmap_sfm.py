@@ -118,9 +118,9 @@ class COLMAPRunner:
             'high': {'max_image_size': 3200, 'max_num_features': 16384},
             'extreme': {'max_image_size': 4800, 'max_num_features': 32768}
         }
-        
+
         settings = quality_settings.get(quality, quality_settings['high'])
-        
+
         cmd = [
             self.colmap_exe, 'feature_extractor',
             '--database_path', str(database_path),
@@ -130,11 +130,29 @@ class COLMAPRunner:
             '--SiftExtraction.max_image_size', str(settings['max_image_size']),
             '--SiftExtraction.max_num_features', str(settings['max_num_features']),
         ]
-        
+
         if use_gpu:
             cmd.extend(['--SiftExtraction.use_gpu', '1'])
-        
-        self._run_command(cmd, "Feature extraction failed")
+
+        # Try with GPU flag, fallback to CPU if GPU not supported
+        try:
+            self._run_command(cmd, "Feature extraction failed")
+        except RuntimeError as e:
+            if use_gpu and 'use_gpu' in str(e):
+                logger.warning("GPU flag not supported by this COLMAP version, retrying with CPU")
+                # Retry without GPU flag
+                cmd = [
+                    self.colmap_exe, 'feature_extractor',
+                    '--database_path', str(database_path),
+                    '--image_path', image_dir,
+                    '--ImageReader.camera_model', camera_model,
+                    '--ImageReader.single_camera', '1',
+                    '--SiftExtraction.max_image_size', str(settings['max_image_size']),
+                    '--SiftExtraction.max_num_features', str(settings['max_num_features']),
+                ]
+                self._run_command(cmd, "Feature extraction failed")
+            else:
+                raise
     
     def _run_feature_matching(
         self,
@@ -148,14 +166,27 @@ class COLMAPRunner:
             self.colmap_exe, 'exhaustive_matcher',
             '--database_path', str(database_path),
         ]
-        
+
         if use_gpu:
             cmd.extend(['--SiftMatching.use_gpu', '1'])
-        
+
         # For larger datasets, consider sequential or spatial matching
         # cmd = [self.colmap_exe, 'sequential_matcher', ...]
-        
-        self._run_command(cmd, "Feature matching failed")
+
+        # Try with GPU flag, fallback to CPU if GPU not supported
+        try:
+            self._run_command(cmd, "Feature matching failed")
+        except RuntimeError as e:
+            if use_gpu and 'use_gpu' in str(e):
+                logger.warning("GPU flag not supported by this COLMAP version, retrying with CPU")
+                # Retry without GPU flag
+                cmd = [
+                    self.colmap_exe, 'exhaustive_matcher',
+                    '--database_path', str(database_path),
+                ]
+                self._run_command(cmd, "Feature matching failed")
+            else:
+                raise
     
     def _run_mapper(
         self,
