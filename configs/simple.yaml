@@ -22,9 +22,12 @@ yolo:
 
 # SFM (Structure from Motion)
 sfm:
+  colmap_exe: colmap        # Path to COLMAP executable (default: 'colmap')
+                            # If you have multiple versions, specify absolute path
+                            # Example: /usr/local/bin/colmap
   camera_model: OPENCV      # PINHOLE, OPENCV, RADIAL, SIMPLE_RADIAL
   quality: high             # low, medium, high, extreme
-  use_gpu: true
+  use_gpu: true             # Use GPU acceleration (auto-fallback to CPU if unavailable)
   dense: true               # Set to true to generate dense point cloud
   dense_params:             # Parameters for dense reconstruction
     geom_consistency: false # Geometric consistency check (false = more points)

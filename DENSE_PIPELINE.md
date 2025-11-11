@@ -53,8 +53,12 @@ python -m src.pipeline sfm --config configs/simple.yaml
 **Configuration** (`configs/simple.yaml`):
 ```yaml
 sfm:
+  colmap_exe: colmap      # Path to COLMAP executable (optional)
+                          # Use absolute path if multiple versions installed
+                          # Example: /usr/local/bin/colmap
   camera_model: 'OPENCV'  # Or PINHOLE, RADIAL, etc.
   quality: 'high'         # low, medium, high, extreme
+  use_gpu: true           # Auto-fallback to CPU if GPU not supported
   dense: true             # ← IMPORTANT: Enable dense reconstruction
   dense_params:           # Parameters for dense reconstruction
     geom_consistency: false  # false = more points (recommended)
@@ -463,6 +467,15 @@ python -m src.measure_clusters_2d \
 - Look for `fused_photometric.ply` or `fused.ply` in `data/sfm/dense/`
 - Try running with `geom_consistency: false` (generates more points)
 - Check COLMAP logs for errors during patch_match_stereo or stereo_fusion
+
+### "COLMAP GPU flag not recognized" or wrong COLMAP version
+- Specify absolute path to COLMAP in config:
+  ```yaml
+  sfm:
+    colmap_exe: /usr/local/bin/colmap
+  ```
+- Check COLMAP version: `colmap --version` or `/usr/local/bin/colmap --version`
+- GPU flags automatically fallback to CPU if not supported
 
 ---
 

@@ -662,7 +662,8 @@ def run_colmap_sfm_auto(
     camera_model: str = 'OPENCV',
     quality: str = 'high',
     dense: bool = False,
-    dense_params: Optional[Dict] = None
+    dense_params: Optional[Dict] = None,
+    colmap_exe: str = 'colmap'
 ) -> Dict:
     """
     Automatic COLMAP SFM pipeline.
@@ -675,11 +676,12 @@ def run_colmap_sfm_auto(
         quality: Quality setting ('low', 'medium', 'high', 'extreme')
         dense: Whether to run dense reconstruction
         dense_params: Dense reconstruction parameters (geom_consistency, input_type, etc.)
+        colmap_exe: Path to COLMAP executable (default: 'colmap')
 
     Returns:
         Dictionary of poses
     """
-    runner = COLMAPRunner()
+    runner = COLMAPRunner(colmap_executable=colmap_exe)
 
     # Run sparse reconstruction
     sparse_model_dir = runner.run_sfm_pipeline(
